@@ -16,21 +16,6 @@
 #define BASICDEF
 #endif // BASICDEF
 
-#ifndef BASIC_REALLOC
-#define BASIC_REALLOC realloc
-#endif // BASIC_REALLOC
-
-#ifndef BASIC_FREE
-#define BASIC_FREE free
-#endif // BASIC_FREE
-
-#define BASIC_PANIC(message) basic__panic(__FILE__, __func__, __LINE__, (message))
-void basic__panic(const char *file, const char *func, size_t line, const char *message) {fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); abort();}
-#define BASIC_ASSERT(expr, message) basic__assert(__FILE__, __func__, __LINE__, (expr), (message))
-void basic__assert(const char *file, const char *func, size_t line, bool expr, const char *message) {if (!expr) {fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); abort();}}
-
-#define basic_return_defer(value) do {result = (value); goto defer;} while (0)
-
 #ifndef BASIC_NO_PREFIX
 #    define da_reserve basic_da_reserve
 #    define da_append basic_da_append
@@ -75,6 +60,54 @@ void basic__assert(const char *file, const char *func, size_t line, bool expr, c
 
 #    define load_file basic_load_file
 #endif // BASIC_NO_PREFIX
+
+#ifdef BASIC_INCLUDE_STDINT
+#include <inttypes.h>
+#include <stdint.h>
+
+#    define i8 int8_t
+#    define s8 int8_t
+#    define u8 uint8_t
+#    define i16 int16_t
+#    define s16 int16_t
+#    define u16 uint16_t
+#    define i32 int32_t
+#    define s32 int32_t
+#    define u32 uint32_t
+#    define i64 int64_t
+#    define s64 int64_t
+#    define u64 uint64_t
+#endif // BASIC_INCLUDE_STDINT
+
+#ifndef BASIC_REALLOC
+#define BASIC_REALLOC realloc
+#endif // BASIC_REALLOC
+
+#ifndef BASIC_FREE
+#define BASIC_FREE free
+#endif // BASIC_FREE
+
+#define BASIC_PANIC(message) basic__panic(__FILE__, __func__, __LINE__, (message))
+#define basic__panic(file, func, line, message)                         \
+     do {                                                               \
+          fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); \
+          abort();                                                      \
+     } while (0)
+
+#define BASIC_ASSERT(expr, message) basic__assert(__FILE__, __func__, __LINE__, (expr), (message))
+#define basic__assert(file, func, line, expr, message)                  \
+     do {                                                               \
+          if (!(expr)) {                                                \
+               fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); \
+               abort();                                                 \
+          }                                                             \
+     } while (0)
+
+#define basic_return_defer(value) do {result = (value); goto defer;} while (0)
+
+// Inspired by tsoding/nob.h's nob_shift()
+#define basic_shift(xs, sz) (BASIC_ASSERT(sz > 0, "unable to shift anymore"), (sz)--, (xs)++)
+#define basic_shift_args(argc, argv) basic_shift(*argv, *argc)
 
 // Initial capacity of dynamic array
 #ifndef BASIC_DA_INIT_CAP

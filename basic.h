@@ -88,20 +88,10 @@
 #endif // BASIC_FREE
 
 #define BASIC_PANIC(message) basic__panic(__FILE__, __func__, __LINE__, (message))
-#define basic__panic(file, func, line, message)                         \
-     do {                                                               \
-          fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); \
-          abort();                                                      \
-     } while (0)
+void basic__panic(const char *file, const char *func, size_t line, const char *message);
 
 #define BASIC_ASSERT(expr, message) basic__assert(__FILE__, __func__, __LINE__, (expr), (message))
-#define basic__assert(file, func, line, expr, message)                  \
-     do {                                                               \
-          if (!(expr)) {                                                \
-               fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); \
-               abort();                                                 \
-          }                                                             \
-     } while (0)
+void basic__assert(const char *file, const char *func, size_t line, bool expr, const char *message);
 
 #define basic_return_defer(value) do {result = (value); goto defer;} while (0)
 
@@ -203,6 +193,17 @@ BASICDEF bool basic_load_file(const char *path, Basic_String_Builder *sb);
 #ifdef BASIC_IMPLEMENTATION
 
 #include <ctype.h>
+
+BASICDEF void basic__panic(const char *file, const char *func, size_t line, const char *message) {
+     fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message);
+     abort();
+}
+
+BASICDEF void basic__assert(const char *file, const char *func, size_t line, bool expr, const char *message) {
+     if (!expr) {
+          fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); abort();
+     }
+}
 
 BASICDEF Basic_String_Builder basic_sb_from_parts(const char *data, size_t count)
 {

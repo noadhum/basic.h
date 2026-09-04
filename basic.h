@@ -30,6 +30,7 @@
 #    define stack_pop basic_stack_pop
 #    define stack_peek_first basic_stack_peek_first
 #    define stack_peek_last basic_stack_peek_last
+#    define stack_empty basic_stack_empty
 
 #    define String_Builder Basic_String_Builder
 #    define SB BASIC_SB
@@ -147,6 +148,7 @@ void basic__assert(const char *file, const char *func, size_t line, bool expr, c
 #define basic_stack_pop basic_da_pop
 #define basic_stack_peek_first basic_da_peek_first
 #define basic_stack_peek_last basic_da_peek_last
+#define basic_stack_empty(stack) ((stack)->count == 0)
 
 typedef struct {
      char *items;
@@ -191,6 +193,8 @@ BASICDEF bool basic_load_file(const char *path, Basic_String_Builder *sb);
 #endif // BASIC_H_
 
 #ifdef BASIC_IMPLEMENTATION
+#ifndef BASIC_IMPLEMENTED
+#define BASIC_IMPLEMENTED
 
 #include <ctype.h>
 
@@ -394,4 +398,5 @@ defer:
      return result;
 }
 
-#endif /// BASIC_IMPLEMENTATION
+#endif // BASIC_IMPLEMENTED
+#endif // BASIC_IMPLEMENTATION

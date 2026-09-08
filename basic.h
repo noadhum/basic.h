@@ -96,6 +96,8 @@ void basic__assert(const char *file, const char *func, size_t line, bool expr, c
 
 #define basic_return_defer(value) do {result = (value); goto defer;} while (0)
 
+#define BASIC_ARRAY_LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
 // Inspired by tsoding/nob.h's nob_shift()
 #define basic_shift(xs, sz) (BASIC_ASSERT(sz > 0, "unable to shift anymore"), (sz)--, (xs)++)
 #define basic_shift_args(argc, argv) basic_shift(*argv, *argc)

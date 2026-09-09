@@ -62,24 +62,6 @@
 #    define load_file basic_load_file
 #endif // BASIC_NO_PREFIX
 
-#ifdef BASIC_INCLUDE_STDINT
-#include <inttypes.h>
-#include <stdint.h>
-
-#    define i8 int8_t
-#    define s8 int8_t
-#    define u8 uint8_t
-#    define i16 int16_t
-#    define s16 int16_t
-#    define u16 uint16_t
-#    define i32 int32_t
-#    define s32 int32_t
-#    define u32 uint32_t
-#    define i64 int64_t
-#    define s64 int64_t
-#    define u64 uint64_t
-#endif // BASIC_INCLUDE_STDINT
-
 #ifndef BASIC_REALLOC
 #define BASIC_REALLOC realloc
 #endif // BASIC_REALLOC
@@ -178,6 +160,8 @@ typedef struct {
 } Basic_String_View;
 
 #define BASIC_SV(cstr_lit) basic_sv_from_parts(cstr_lit, sizeof(cstr_lit) - 1)
+
+#define basic_sv_shift(sv) basic_shift((sv)->data, (sv)->count)
 
 BASICDEF Basic_String_View basic_sv_from_parts(const char *data, size_t count);
 BASICDEF Basic_String_View basic_sv_from_cstr(const char *cstr);

@@ -28,9 +28,9 @@ BASICDEF void basic__panicf(const char *file, size_t line, const char *func, con
 
 #define basic_return_defer(value) do {result = (value); goto defer;} while(0)
 // tsoding/nob.h's nob_shift() and nob_shift_args()
-#define basic_shift(xs, sz) basic_assert((sz) > 0, "unable to shift anymore"), (sz)--, *(xs)++)
+#define basic_shift(xs, sz) (basic_assert((sz) > 0, "unable to shift anymore"), (sz)--, *(xs)++)
 #define basic_shift_args(argc, argv) basic_shift(*argv, *argc)
-#define basic_shift_many(xs, sz, count) basic_assert((sz) - (count) > 0, "unable to shift anymore"), (sz) -= (count), (xs) += (count))
+#define basic_shift_many(xs, sz, count) (basic_assert((sz) - (count) > 0, "unable to shift anymore"), (sz) -= (count), (xs) += (count))
 
 #define BASIC_ARRAY_LEN(arr) (sizeof(arr)/sizeof(arr[0]))
 
@@ -108,7 +108,7 @@ typedef struct {
 
 #define BASIC_SV(cstr_lit) (Basic_String_View){(cstr_lit), sizeof(cstr_lit)-1}
 #define basic_sv_shift(sv) ((sv)->count--, *(sv)->data++)
-#define basic_sv_shift_many(sv, shift_count) ((sv)->count -= (shift_count), (sv)->data += (shift_count));
+#define basic_sv_shift_many(sv, shift_count) ((sv)->count -= (shift_count), (sv)->data += (shift_count))
 
 BASICDEF Basic_String_View basic_sv_from_cstr(const char *cstr);
 BASICDEF Basic_String_View basic_sv_from_sb(const Basic_String_Builder *sb);

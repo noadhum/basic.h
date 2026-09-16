@@ -1,388 +1,295 @@
 /*
   basic.h - (https://www.github.com/noadhum/basic.h)
-  Personal single-header library in C
- */
+  Personal C/C++ single-header library
+*/
 
 #ifndef BASIC_H_
 #define BASIC_H_
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #ifndef BASICDEF
 #define BASICDEF
 #endif // BASICDEF
 
-#ifndef BASIC_NO_PREFIX
-#    define da_reserve basic_da_reserve
-#    define da_append basic_da_append
-#    define da_append_many basic_da_append_many
-#    define da_free basic_da_free
-#    define da_push basic_da_push
-#    define da_pop basic_da_pop
-#    define da_peek_first basic_da_peek_first
-#    define da_peek_last basic_da_peek_last
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#    define stack_push basic_stack_push
-#    define stack_pop basic_stack_pop
-#    define stack_peek_first basic_stack_peek_first
-#    define stack_peek_last basic_stack_peek_last
-#    define stack_empty basic_stack_empty
+#define basic_assert(expr, message) basic__assert(expr, __FILE__, __LINE__, __func__, message)
+#define basic_assertf(expr, fmt, ...) basic__assertf(expr, __FILE__, __LINE__, __func__, fmt, __VA_ARGS__)
+#define basic_panic(message) basic__panic(__FILE__, __LINE__, __func__, message)
+#define basic_panicf(fmt, ...) basic__panicf(__FILE__, __LINE__, __func__, fmt, __VA_ARGS__)
 
-#    define String_Builder Basic_String_Builder
-#    define SB BASIC_SB
-#    define sb_from_parts basic_sb_from_parts
-#    define sb_from_cstr basic_sb_from_cstr
-#    define sb_append_cstr basic_sb_append_cstr
-#    define sb_append_char basic_sb_append_char
-#    define sb_append_sb basic_sb_append_sb
-#    define sb_reserve basic_sb_reserve
-#    define sb_free basic_sb_free
-#    define sb_eq_cstr basic_sb_eq_cstr
-#    define sb_eq_cstr_ignorecase basic_sb_eq_cstr_ignorecase
-#    define sb_eq_sb basic_sb_eq_sb
-#    define sb_eq_sb_ignorecase basic_sb_eq_sb_ignorecase
+BASICDEF void basic__assert(bool expr, const char *file, size_t line, const char *func, const char *message);
+BASICDEF void basic__assertf(bool expr, const char *file, size_t line, const char *func, const char *fmt, ...);
+BASICDEF void basic__panic(const char *file, size_t line, const char *func, const char *message);
+BASICDEF void basic__panicf(const char *file, size_t line, const char *func, const char *fmt, ...);
 
-#    define String_View Basic_String_View
-#    define SV BASIC_SV
-#    define sv_from_parts basic_sv_from_parts
-#    define sv_from_cstr basic_sv_from_cstr
-#    define sv_from_sb basic_sv_from_sb
-#    define sv_substr basic_sv_substr
-#    define sv_find basic_sv_find
-#    define sv_rfind basic_sv_rfind
-#    define sv_eq_cstr basic_sv_eq_cstr
-#    define sv_eq_sv basic_sv_eq_sv
-#    define sv_starts_with basic_sv_starts_with
-#    define sv_ends_with basic_sv_ends_with
-
-#    define load_file basic_load_file
-#endif // BASIC_NO_PREFIX
-
-#ifndef BASIC_REALLOC
-#define BASIC_REALLOC realloc
-#endif // BASIC_REALLOC
-
-#ifndef BASIC_FREE
-#define BASIC_FREE free
-#endif // BASIC_FREE
-
-#define BASIC_PANIC(message) basic__panic(__FILE__, __func__, __LINE__, (message))
-void basic__panic(const char *file, const char *func, size_t line, const char *message);
-
-#define BASIC_ASSERT(expr, message) basic__assert(__FILE__, __func__, __LINE__, (expr), (message))
-void basic__assert(const char *file, const char *func, size_t line, bool expr, const char *message);
-
-#define basic_return_defer(value) do {result = (value); goto defer;} while (0)
-
-#define BASIC_ARRAY_LEN(arr) (sizeof((arr)) / sizeof((arr)[0]))
-
-// Inspired by tsoding/nob.h's nob_shift()
-#define basic_shift(xs, sz) (BASIC_ASSERT(sz > 0, "unable to shift anymore"), (sz)--, (xs)++)
+#define basic_return_defer(value) do {result = (value); goto defer;} while(0)
+// tsoding/nob.h's nob_shift() and nob_shift_args()
+#define basic_shift(xs, sz) basic_assert((sz) > 0, "unable to shift anymore"), (sz)--, *(xs)++)
 #define basic_shift_args(argc, argv) basic_shift(*argv, *argc)
+#define basic_shift_many(xs, sz, count) basic_assert((sz) - (count) > 0, "unable to shift anymore"), (sz) -= (count), (xs) += (count))
 
-// Initial capacity of dynamic array
+#define BASIC_ARRAY_LEN(arr) (sizeof(arr)/sizeof(arr[0]))
+
 #ifndef BASIC_DA_INIT_CAP
-#define BASIC_DA_INIT_CAP 128
+#define BASIC_DA_INIT_CAP 256
 #endif // BASIC_DA_INIT_CAP
 
+#ifdef __cplusplus
+#define BASIC_DECLTYPE(T) (decltype(T))
+#else
+#define BASIC_DECLTYPE(T)
+#endif
+
+#ifdef __cplusplus
+template <typename T>
+struct Basic_Dynamic_Array {
+    T *items;
+    size_t count;
+    size_t capacity;
+};
+#endif // __cplusplus
+
 #define basic_da_reserve(da, new_cap)                                   \
-     do {                                                               \
-          if ((da)->capacity < (new_cap)) {                             \
-               if ((da)->capacity == 0) (da)->capacity = BASIC_DA_INIT_CAP; \
-               while ((da)->capacity < (new_cap)) {                     \
-                    (da)->capacity *= 2;                                \
-               }                                                        \
-               (da)->items = BASIC_REALLOC((da)->items, (da)->capacity * sizeof(*(da)->items)); \
-               BASIC_ASSERT((da)->items != NULL, "unable to allocate memory"); \
-          }                                                             \
-     } while (0)
+    do {                                                                \
+        if ((da)->capacity < (new_cap)) {                               \
+            if ((da)->capacity == 0) (da)->capacity = BASIC_DA_INIT_CAP; \
+            while ((da)->capacity < (new_cap)) {                        \
+                (da)->capacity *= 2;                                    \
+            }                                                           \
+            (da)->items = BASIC_DECLTYPE((da)->items)realloc((da)->items, (da)->capacity * sizeof(*(da)->items)); \
+            basic_assert((da)->items != NULL, "unable to allocate memory"); \
+        }                                                               \
+    } while(0)
 
-// Append a single item into dynamic array
+#define basic_da_free(da) free((da)->items)
+
 #define basic_da_append(da, item)                       \
-     do {                                               \
-          basic_da_reserve((da), (da)->count + 1);      \
-          (da)->items[(da)->count++] = (item);          \
-     } while (0)
+    do {                                                \
+        basic_da_reserve((da), (da)->count + 1);        \
+        (da)->items[(da)->count++] = (item);            \
+    } while(0)
 
-// Append multiple items into dynamic array
 #define basic_da_append_many(da, new_items, items_count)                \
-     do {                                                               \
-          basic_da_reserve((da), (da)->count + (items_count));          \
-          memcpy((da)->items + (da)->count, (new_items), (items_count) * sizeof(*(da)->items)); \
-          (da)->count += (items_count);                                 \
-     } while (0)
+    do {                                                                \
+        basic_da_reserve((da), (da)->count + (items_count));            \
+        memcpy((da)->items + (da)->count, (new_items), (items_count) * sizeof(*(da)->items)); \
+        (da)->count += (items_count);                                   \
+    } while(0)
 
-#define basic_da_free(da) BASIC_FREE((da)->items)
+#define basic_da_empty(da) ((da)->count == 0)
 
-// Push an item into dynamic array
 #define basic_da_push basic_da_append
-// Pop an item from dynamic array
-#define basic_da_pop(da) (BASIC_ASSERT((da)->count > 0, "unable to pop an empty dynamic array"), (da)->items[--(da)->count])
-// Peek the first pushed item in dynamic array
-#define basic_da_peek_first(da) (BASIC_ASSERT((da)->count > 0, "unable to peek an empty dynamic array"), (da)->items[0])
-// Peek the last pushed item in dynamic array
-#define basic_da_peek_last(da) (BASIC_ASSERT((da)->count > 0, "unable to peek an empty dynamic array"), (da)->items[(da)->count - 1])
-
-// Stack operations
-#define basic_stack_push basic_da_push
-#define basic_stack_pop basic_da_pop
-#define basic_stack_peek_first basic_da_peek_first
-#define basic_stack_peek_last basic_da_peek_last
-#define basic_stack_empty(stack) ((stack)->count == 0)
+#define basic_da_pop(da) (basic_assert((da)->count > 0, "unable to pop an empty dynamic array"), (da)->items[--(da)->count])
+#define basic_da_peek_first(da) (basic_assert((da)->count > 0, "unable to peek first item in dynamic array"), (da)->items[0])
+#define basic_da_peek_last(da) (basic_assert((da)->count > 0, "unable to peek last item in dynamic array"), (da)->items[(da)->count-1])
 
 typedef struct {
-     char *items;
-     size_t count;
-     size_t capacity;
+    char *items;
+    size_t count;
+    size_t capacity;
 } Basic_String_Builder;
 
-#define BASIC_SB(cstr_lit) basic_sb_from_parts(cstr_lit, sizeof(cstr_lit) - 1)
+#define basic_sb_reserve basic_da_reserve
+#define basic_sb_free basic_da_free
+#define basic_sb_append_sv(sb, sv) basic_da_append_many(sb, (sv)->data, (sv)->count)
 
-BASICDEF Basic_String_Builder basic_sb_from_parts(const char *data, size_t count);
-BASICDEF Basic_String_Builder basic_sb_from_cstr(const char *cstr);
-BASICDEF void basic_sb_append_cstr(Basic_String_Builder *sb, const char *cstr);
 BASICDEF void basic_sb_append_char(Basic_String_Builder *sb, char c);
-BASICDEF void basic_sb_append_sb(Basic_String_Builder *dst, const Basic_String_Builder *src);
-BASICDEF void basic_sb_reserve(Basic_String_Builder *sb, size_t new_cap);
-BASICDEF void basic_sb_free(Basic_String_Builder *sb);
-BASICDEF bool basic_sb_eq_cstr(const Basic_String_Builder *sb, const char *cstr);
-BASICDEF bool basic_sb_eq_cstr_ignorecase(const Basic_String_Builder *sb, const char *cstr);
-BASICDEF bool basic_sb_eq_sb(const Basic_String_Builder *a, const Basic_String_Builder *b);
-BASICDEF bool basic_sb_eq_sb_ignorecase(const Basic_String_Builder *a, const Basic_String_Builder *b);
+BASICDEF void basic_sb_append_cstr(Basic_String_Builder *sb, const char *cstr);
+BASICDEF void basic_sb_append_fmt(Basic_String_Builder *sb, const char *fmt, ...);
 
 typedef struct {
-     const char *data;
-     size_t count;
+    const char *data;
+    size_t count;
 } Basic_String_View;
 
-#define BASIC_SV(cstr_lit) basic_sv_from_parts(cstr_lit, sizeof(cstr_lit) - 1)
+#define BASIC_SV(cstr_lit) (Basic_String_View){(cstr_lit), sizeof(cstr_lit)-1}
+#define basic_sv_shift(sv) ((sv)->count--, *(sv)->data++)
+#define basic_sv_shift_many(sv, shift_count) ((sv)->count -= (shift_count), (sv)->data += (shift_count));
 
-#define basic_sv_shift(sv) basic_shift((sv)->data, (sv)->count)
-
-BASICDEF Basic_String_View basic_sv_from_parts(const char *data, size_t count);
 BASICDEF Basic_String_View basic_sv_from_cstr(const char *cstr);
 BASICDEF Basic_String_View basic_sv_from_sb(const Basic_String_Builder *sb);
 BASICDEF Basic_String_View basic_sv_substr(Basic_String_View sv, size_t pos, size_t count);
-BASICDEF bool basic_sv_find(Basic_String_View sv, char c, size_t *idx);
-BASICDEF bool basic_sv_rfind(Basic_String_View sv, char c, size_t *idx);
 BASICDEF bool basic_sv_eq_cstr(Basic_String_View sv, const char *cstr);
+BASICDEF bool basic_sv_eq_sb(Basic_String_View sv, const Basic_String_Builder *sb);
 BASICDEF bool basic_sv_eq_sv(Basic_String_View a, Basic_String_View b);
 BASICDEF bool basic_sv_starts_with(Basic_String_View sv, const char *prefix);
 BASICDEF bool basic_sv_ends_with(Basic_String_View sv, const char *suffix);
 
-BASICDEF bool basic_load_file(const char *path, Basic_String_Builder *sb);
+#ifndef BASIC_NO_PREFIX
+
+#ifdef __cplusplus
+#define Dynamic_Array Basic_Dynamic_Array
+#endif // __cplusplus
+
+#define da_reserve basic_da_reserve
+#define da_free basic_da_free
+#define da_append basic_da_append
+#define da_append_many basic_da_append_many
+#define da_empty basic_da_empty
+#define da_push basic_da_push
+#define da_pop basic_da_pop
+#define da_peek_first basic_da_peek_first
+#define da_peek_last basic_da_peek_last
+
+#define String_Builder Basic_String_Builder
+
+#define sb_reserve basic_sb_reserve
+#define sb_free basic_sb_free
+#define sb_append_sv basic_sb_append_sv
+#define sb_append_char basic_sb_append_char
+#define sb_append_cstr basic_sb_append_cstr
+#define sb_append_fmt basic_sb_append_fmt
+
+#define String_View Basic_String_View
+
+#define SV BASIC_SV
+#define sv_shift basic_sv_shift
+#define sv_shift_many basic_sv_shift_many
+#define sv_from_cstr basic_sv_from_cstr
+#define sv_from_sb basic_sv_from_sb
+#define sv_substr basic_sv_substr
+#define sv_eq_cstr basic_sv_eq_cstr
+#define sv_eq_sb basic_sv_eq_sb
+#define sv_eq_sv basic_sv_eq_sv
+#define sv_starts_with basic_sv_starts_with
+#define sv_ends_with basic_sv_ends_with
+
+#endif // BASIC_NO_PREFIX
 
 #endif // BASIC_H_
 
 #ifdef BASIC_IMPLEMENTATION
-#ifndef BASIC_IMPLEMENTED
-#define BASIC_IMPLEMENTED
 
 #include <ctype.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-BASICDEF void basic__panic(const char *file, const char *func, size_t line, const char *message) {
-     fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message);
-     abort();
-}
-
-BASICDEF void basic__assert(const char *file, const char *func, size_t line, bool expr, const char *message) {
-     if (!expr) {
-          fprintf(stderr, "%s:%s:%zu: %s\n", file, func, line, message); abort();
-     }
-}
-
-BASICDEF Basic_String_Builder basic_sb_from_parts(const char *data, size_t count)
+BASICDEF void basic__panic(const char *file, size_t line, const char *func, const char *message)
 {
-     Basic_String_Builder sb = {0};
-
-     if (count != 0) {
-          basic_da_reserve(&sb, count + 1);
-          basic_da_append_many(&sb, data, count);
-     }
-
-     return sb;
+    fprintf(stderr, "%s:%zu: %s: %s\n", file, line, func, message);
+    abort();
 }
 
-BASICDEF Basic_String_Builder basic_sb_from_cstr(const char *cstr)
+BASICDEF void basic__panicf(const char *file, size_t line, const char *func, const char *fmt, ...)
 {
-     return basic_sb_from_parts(cstr, strlen(cstr));
+    va_list ap;
+    va_start(ap, fmt);
+    fprintf(stderr, "%s:%zu: %s: ", file, line, func);
+    vfprintf(stderr, fmt, ap);
+    putc('\n', stderr);
+    va_end(ap);
+    abort();
 }
 
-BASICDEF void basic_sb_append_cstr(Basic_String_Builder *sb, const char *cstr)
+BASICDEF void basic__assert(bool expr, const char *file, size_t line, const char *func, const char *message)
 {
-     size_t cstr_count = strlen(cstr);
-     basic_da_append_many(sb, cstr, cstr_count);
+    if (!expr) {
+        basic__panic(file, line, func, message);
+    }
+}
+
+BASICDEF void basic__assertf(bool expr, const char *file, size_t line, const char *func, const char *fmt, ...)
+{
+    if (!expr) {
+        va_list ap;
+        va_start(ap, fmt);
+
+        fprintf(stderr, "%s:%zu: %s: ", file, line, func);
+        vfprintf(stderr, fmt, ap);
+        putc('\n', stderr);
+
+        va_end(ap);
+        abort();
+    }
 }
 
 BASICDEF void basic_sb_append_char(Basic_String_Builder *sb, char c)
 {
-     basic_da_append(sb, c);
+    basic_da_append(sb, c);
 }
 
-BASICDEF void basic_sb_append_sb(Basic_String_Builder *dst, const Basic_String_Builder *src)
+BASICDEF void basic_sb_append_cstr(Basic_String_Builder *sb, const char *cstr)
 {
-     basic_da_append_many(dst, src->items, src->count);
+    size_t cstr_count = strlen(cstr);
+    basic_da_append_many(sb, cstr, cstr_count);
 }
 
-BASICDEF void basic_sb_reserve(Basic_String_Builder *sb, size_t new_cap)
+BASICDEF void basic_sb_append_fmt(Basic_String_Builder *sb, const char *fmt, ...)
 {
-     basic_da_reserve(sb, new_cap);
-}
+    va_list ap;
 
-BASICDEF void basic_sb_free(Basic_String_Builder *sb)
-{
-     basic_da_free(sb);
-}
+    va_start(ap, fmt);
+    int fmt_count = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
 
-BASICDEF bool basic_sb_eq_cstr(const Basic_String_Builder *sb, const char *cstr)
-{
-     size_t cstr_count = strlen(cstr);
-     if (sb->count != cstr_count) return false;
-     return memcmp(sb->items, cstr, cstr_count) == 0;
-}
+    va_start(ap, fmt);
+    basic_da_reserve(sb, sb->count + fmt_count + 1);
+    vsnprintf(sb->items + sb->count, fmt_count + 1, fmt, ap);
+    va_end(ap);
 
-BASICDEF bool basic_sb_eq_cstr_ignorecase(const Basic_String_Builder *sb, const char *cstr)
-{
-     size_t cstr_count = strlen(cstr);
-     if (sb->count != cstr_count) return false;
-
-     for (size_t i = 0; i < sb->count; i++) {
-          if (tolower((unsigned char)sb->items[i]) != tolower((unsigned char)cstr[i])) {
-               return false;
-          }
-     }
-
-     return true;
-}
-
-BASICDEF bool basic_sb_eq_sb(const Basic_String_Builder *a, const Basic_String_Builder *b)
-{
-     if (a->count != b->count) return false;
-     return memcmp(a->items, b->items, a->count) == 0;
-}
-
-BASICDEF bool basic_sb_eq_sb_ignorecase(const Basic_String_Builder *a, const Basic_String_Builder *b)
-{
-     if (a->count != b->count) return false;
-
-     for (size_t i = 0; i < a->count; i++) {
-          if (tolower((unsigned char)a->items[i]) != tolower((unsigned char)b->items[i])) {
-               return false;
-          }
-     }
-
-     return true;
-}
-
-BASICDEF Basic_String_View basic_sv_from_parts(const char *data, size_t count)
-{
-     return (Basic_String_View) {
-          .data = data,
-          .count = count
-     };
+    sb->count += (size_t)fmt_count;
 }
 
 BASICDEF Basic_String_View basic_sv_from_cstr(const char *cstr)
 {
-     return basic_sv_from_parts(cstr, strlen(cstr));
+    return (Basic_String_View){cstr, strlen(cstr)};
 }
 
 BASICDEF Basic_String_View basic_sv_from_sb(const Basic_String_Builder *sb)
 {
-     return basic_sv_from_parts(sb->items, sb->count);
+    return (Basic_String_View){sb->items, sb->count};
 }
 
 BASICDEF Basic_String_View basic_sv_substr(Basic_String_View sv, size_t pos, size_t count)
 {
-     return basic_sv_from_parts(&sv.data[pos], count);
-}
-
-BASICDEF bool basic_sv_find(Basic_String_View sv, char c, size_t *idx)
-{
-     for (size_t i = 0; i < sv.count; i++) {
-          if (sv.data[i] == c) {
-               *idx = i;
-               return true;
-          }
-     }
-
-     return false;
-}
-
-BASICDEF bool basic_sv_rfind(Basic_String_View sv, char c, size_t *idx)
-{
-     bool found = false;
-
-     for (size_t i = 0; i < sv.count; i++) {
-          if (sv.data[i] == c) {
-               *idx = i;
-               found = true;
-          }
-     }
-
-     return found;
+    return (Basic_String_View){sv.data + pos, count};
 }
 
 BASICDEF bool basic_sv_eq_cstr(Basic_String_View sv, const char *cstr)
 {
-     size_t cstr_count = strlen(cstr);
-     if (sv.count != cstr_count) return false;
-     return memcmp(sv.data, cstr, sv.count) == 0;
+    size_t cstr_count = strlen(cstr);
+    if (sv.count != cstr_count) return false;
+    return memcmp(sv.data, cstr, sv.count) == 0;
+}
+
+BASICDEF bool basic_sv_eq_sb(Basic_String_View sv, const Basic_String_Builder *sb)
+{
+    if (sv.count != sb->count) return false;
+    return memcmp(sv.data, sb->items, sv.count) == 0;
 }
 
 BASICDEF bool basic_sv_eq_sv(Basic_String_View a, Basic_String_View b)
 {
-     if (a.count != b.count) return false;
-     return memcmp(a.data, b.data, a.count) == 0;
+    if (a.count != b.count) return false;
+    return memcmp(a.data, b.data, a.count) == 0;
 }
 
 BASICDEF bool basic_sv_starts_with(Basic_String_View sv, const char *prefix)
 {
-     size_t prefix_count = strlen(prefix);
-     if (sv.count < prefix_count) return false;
-     Basic_String_View expected_prefix = basic_sv_from_parts(prefix, prefix_count);
-     Basic_String_View actual_prefix = basic_sv_substr(sv, 0, prefix_count);
-     return basic_sv_eq_sv(expected_prefix, actual_prefix);
+    size_t prefix_count = strlen(prefix);
+
+    if (sv.count < prefix_count) return false;
+
+    Basic_String_View expected_prefix = {prefix, prefix_count};
+    Basic_String_View actual_prefix = basic_sv_substr(sv, 0, prefix_count);
+
+    return basic_sv_eq_sv(expected_prefix, actual_prefix);
 }
 
 BASICDEF bool basic_sv_ends_with(Basic_String_View sv, const char *suffix)
 {
-     size_t suffix_count = strlen(suffix);
-     if (sv.count < suffix_count) return false;
-     Basic_String_View expected_suffix = basic_sv_from_parts(suffix, suffix_count);
-     Basic_String_View actual_suffix = basic_sv_substr(sv, sv.count - expected_suffix.count, expected_suffix.count);
-     return basic_sv_eq_sv(expected_suffix, actual_suffix);
+    size_t suffix_count = strlen(suffix);
+
+    if (sv.count < suffix_count) return false;
+
+    Basic_String_View expected_suffix = {suffix, suffix_count};
+    Basic_String_View actual_suffix = basic_sv_substr(sv, sv.count - expected_suffix.count, expected_suffix.count);
+
+    return basic_sv_eq_sv(expected_suffix, actual_suffix);
 }
 
-BASICDEF bool basic_load_file(const char *path, Basic_String_Builder *sb)
-{
-     bool result = true;
-
-     FILE *file = fopen(path, "rb");
-     if (!file) basic_return_defer(false);
-     if (fseek(file, 0, SEEK_END) != 0) basic_return_defer(false);
-
-#ifdef _WIN32
-     long long file_count = _ftelli64(file);
-#else
-     long long file_count = ftello(file);
-#endif
-     if (file_count == -1L) basic_return_defer(false);
-     if (fseek(file, 0, SEEK_SET) != 0) basic_return_defer(false);
-
-     basic_da_reserve(sb, file_count);
-     fread(sb->items, file_count, 1, file);
-     if (ferror(file)) basic_return_defer(false);
-     sb->count += file_count;
-
-defer:
-     if (file) fclose(file);
-     return result;
-}
-
-#endif // BASIC_IMPLEMENTED
 #endif // BASIC_IMPLEMENTATION

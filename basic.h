@@ -113,11 +113,14 @@ typedef struct {
 BASICDEF Basic_String_View basic_sv_from_cstr(const char *cstr);
 BASICDEF Basic_String_View basic_sv_from_sb(const Basic_String_Builder *sb);
 BASICDEF Basic_String_View basic_sv_substr(Basic_String_View sv, size_t pos, size_t count);
+BASICDEF Basic_String_View basic_sv_slice(Basic_String_View sv, size_t start, size_t end);
 BASICDEF bool basic_sv_eq_cstr(Basic_String_View sv, const char *cstr);
 BASICDEF bool basic_sv_eq_sb(Basic_String_View sv, const Basic_String_Builder *sb);
 BASICDEF bool basic_sv_eq_sv(Basic_String_View a, Basic_String_View b);
 BASICDEF bool basic_sv_starts_with(Basic_String_View sv, const char *prefix);
 BASICDEF bool basic_sv_ends_with(Basic_String_View sv, const char *suffix);
+
+BASICDEF bool basic_read_file(const char *path, Basic_String_Builder *sb);
 
 #ifndef BASIC_NO_PREFIX
 
@@ -152,17 +155,23 @@ BASICDEF bool basic_sv_ends_with(Basic_String_View sv, const char *suffix);
 #define sv_from_cstr basic_sv_from_cstr
 #define sv_from_sb basic_sv_from_sb
 #define sv_substr basic_sv_substr
+#define sv_slice basic_sv_slice
 #define sv_eq_cstr basic_sv_eq_cstr
 #define sv_eq_sb basic_sv_eq_sb
 #define sv_eq_sv basic_sv_eq_sv
 #define sv_starts_with basic_sv_starts_with
 #define sv_ends_with basic_sv_ends_with
 
+#define read_file basic_read_file
+
 #endif // BASIC_NO_PREFIX
 
 #endif // BASIC_H_
 
 #ifdef BASIC_IMPLEMENTATION
+
+#ifndef BASIC_IMPLEMENTED
+#define BASIC_IMPLEMENTED
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -249,6 +258,15 @@ BASICDEF Basic_String_View basic_sv_substr(Basic_String_View sv, size_t pos, siz
     return (Basic_String_View){sv.data + pos, count};
 }
 
+BASICDEF Basic_String_View basic_sv_slice(Basic_String_View sv, size_t start, size_t end)
+{
+    if (start > end) {
+        return (Basic_String_View){sv.data, 0};
+    } else {
+        return (Basic_String_View){sv.data + start, end - start};
+    }
+}
+
 BASICDEF bool basic_sv_eq_cstr(Basic_String_View sv, const char *cstr)
 {
     size_t cstr_count = strlen(cstr);
@@ -291,5 +309,35 @@ BASICDEF bool basic_sv_ends_with(Basic_String_View sv, const char *suffix)
 
     return basic_sv_eq_sv(expected_suffix, actual_suffix);
 }
+
+BASICDEF bool basic_read_file(const char *path, Basic_String_Builder *sb)
+{
+     bool result = true;
+     long long count;
+
+     FILE *fp = fopen(path, "rb");
+     if (!fp) basic_return_defer(false);
+     if (fseek(fp, 0, SEEK_END) != 0) basic_return_defer(false);
+
+#ifdef _WIN32
+     count = _ftelli64(fp);
+#else
+     count = ftello(fp);
+#endif
+
+     if (count == -1L) basic_return_defer(false);
+     if (fseek(fp, 0, SEEK_SET) != 0) basic_return_defer(false);
+
+     basic_da_reserve(sb, count);
+     fread(sb->items + sb->count, count, 1, fp);
+     if (ferror(fp)) basic_return_defer(false);
+     sb->count += count;
+
+defer:
+     if (fp) fclose(fp);
+     return result;
+}
+
+#endif // BASIC_IMPLEMENTED
 
 #endif // BASIC_IMPLEMENTATION
